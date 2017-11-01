@@ -1,32 +1,76 @@
-import React, { Component } from 'react'
+import React, { PureComponent } from 'react'
 import { Link } from 'react-router-dom'
 import Book from './Book'
 import PropTypes from 'prop-types'
-import escapeRegExp from 'escape-string-regexp'
+// import escapeRegExp from 'escape-string-regexp'
+import * as BooksAPI from './BooksAPI'
+import debounce from 'lodash/debounce';
 
 
-class SearchBooks extends Component {
+class SearchBooks extends PureComponent {
   static PropTypes = {
     books: PropTypes.array.isRequired,
     updateBook: PropTypes.func.isRequired
   }
 
+  constructor(props) {
+        super(props);
+        this.searchBook = debounce(this.searchBook,400);
+  }
+
+
   state = {
-		query: ''
-	}
+    query: '',
+    foundBooks: []
+  }
 
-	updateQuery = (query) => {
-		this.setState({ query: query.replace(/^\s+/g, '') })
-	}
 
-	clearQuery = () => {
-		this.setState({ query: '' })
-	}
+  setCategory(books) {
+    books.map((b) => {
+      b.shelf = 'none'
+      return b
+    })
+
+    this.props.books.map((book) => {
+      const index = books.findIndex(b => b.id === book.id)
+      console.log(index)
+      if(index >= 0) {
+        books[index].shelf = book.shelf
+      }
+      return book
+    })
+
+    return books;
+  }
+
+
+  updateQuery = (query) => {
+    this.setState({ query },
+      () => {
+        if(query.length > 0) {
+          this.searchBook()
+        }
+      }
+    )
+  }
+
+  searchBook() {
+    BooksAPI.search(this.state.query, 20).then((books) => {
+      if(Array.isArray(books)) {
+        this.setState(state => ({
+          foundBooks: this.setCategory(books)
+        }))
+      } else {
+        this.setState({ foundBooks: [] })
+      }
+
+    })
+  }
 
   render() {
-    const { books, updateBook } = this.props
-    const { query } = this.state
-
+    const { updateBook } = this.props
+    const { query, foundBooks } = this.state
+    /*
     let showingBooks;
     if (query) {
       const match = new RegExp(escapeRegExp(query), 'i')
@@ -34,6 +78,8 @@ class SearchBooks extends Component {
     } else {
       showingBooks = books
     }
+    */
+    // let debouncer = _.debounce(updateQuery, 400)
 
     return (
       <div className="search-books">
@@ -52,13 +98,15 @@ class SearchBooks extends Component {
               type="text"
               placeholder="Search by title or author"
               value={query}
-              onChange={(event) => this.updateQuery(event.target.value)}
+              onChange={(event) =>
+                this.updateQuery(event.target.value)
+              }
             />
           </div>
         </div>
         <div className="search-books-results">
           <ol className="books-grid">
-            {showingBooks.map((book) => (
+            {foundBooks.map((book) => (
               <li key={book.id}>
                 <Book
                   book={book}

@@ -9,6 +9,9 @@ console.log(BooksAPI.getAll())
 
 // console.log(BooksAPI.get())
 
+console.log(BooksAPI.search('the linux', 10))
+
+
 
 class BooksApp extends Component {
   state = {
